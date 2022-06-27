@@ -5,8 +5,16 @@
 
 #PLAY="ffplay  -f s16le -ar 16k -ac 1 -i -"
 
-# OUT_DEV="-D hw:CARD=UAC2Gadget"
-PLAY="aplay --quiet ${OUT_DEV} -t raw -c1 -f S16_LE -r16000"
+NCHANNELS=1
+
+# Cheap USB Audio dongle. Comment out to use the default.
+OUT_DEV="-D hw:CARD=Device"
+
+# PLAY_CONVERT=cat
+# PLAY="aplay --quiet ${OUT_DEV} -t raw -c${NCHANNELS} -f S16_LE -r16000"
+
+PLAY_CONVERT="sox --no-show-progress  -b 16 -c 1 -e signed-integer -r 16000 -t raw - -b 16 -c 2 -e signed-integer -r 44100 -t raw  -"
+PLAY="aplay --quiet ${OUT_DEV} -t raw -c2 -f S16_LE -r44100"
 
 set -e
 
@@ -28,7 +36,7 @@ arecord --quiet -D hw:CARD=BeagleMic -c8 -t raw -f S32_LE -r24000 "${F_REC}" &
 REC_PID=$!
 
 # Play the prepared data.
-cat "${F_PLAY}" | ${PLAY}
+cat "${F_PLAY}" | ${PLAY_CONVERT} | ${PLAY}
 
 # Stop recording
 kill -s SIGINT ${REC_PID}
