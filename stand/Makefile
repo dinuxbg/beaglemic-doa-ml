@@ -1,5 +1,5 @@
 
-all: beaglemic-stand.stl
+all: beaglemic-stand.stl beaglemic-stand.png
 
 %.stl: %.scad
 	openscad -o $@ --render stl $^
