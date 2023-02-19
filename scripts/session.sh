@@ -1,20 +1,19 @@
 #!/bin/bash
 
-# Play a given raw PCM audio.
-# Simultaneously record from BeagleMic.
+# Play a given raw PCM audio. Simultaneously record from BeagleMic.
+# This is used to record data for training the DOA NN model.
 
-#PLAY="ffplay  -f s16le -ar 16k -ac 1 -i -"
-
-NCHANNELS=1
-
-# Cheap USB Audio dongle. Comment out to use the default.
+# Output to my cheap USB Audio dongle. Comment out to use the default for your host.
 OUT_DEV="-D hw:CARD=Device"
 
-# PLAY_CONVERT=cat
-# PLAY="aplay --quiet ${OUT_DEV} -t raw -c${NCHANNELS} -f S16_LE -r16000"
-
+# Define how to play the recorded audio. See below how these two variables are used.
 PLAY_CONVERT="sox --no-show-progress  -b 16 -c 1 -e signed-integer -r 16000 -t raw - -b 16 -c 2 -e signed-integer -r 44100 -t raw  -"
 PLAY="aplay --quiet ${OUT_DEV} -t raw -c2 -f S16_LE -r44100"
+
+# Alternative, if the above does not work.
+## PLAY_CONVERT=cat
+## NCHANNELS=1
+## PLAY="aplay --quiet ${OUT_DEV} -t raw -c${NCHANNELS} -f S16_LE -r16000"
 
 set -e
 

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Debug tool to convert raw microphone recording files to
+# WAV files.
+
 set -e
 
 [ $# = 2 ] || { echo "Usage: $0 <in.raw> <out.wav>"; exit 1; }
