@@ -22,6 +22,7 @@
 #include <memory>
 #include <algorithm>
 #include <filesystem>
+#include <chrono>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -364,7 +365,15 @@ int main(int argc, char *argv[])
 	wordexp_t exp;
 	int st;
 
-	std::srand(42);
+	if (1) {
+		// Let's gamble :)
+		auto t = std::chrono::high_resolution_clock::now().time_since_epoch();
+		auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t).count();
+		std::srand(ns);
+	} else {
+		// If stable output is desired.
+		std::srand(42);
+	}
 
 	st = wordexp(fpattern_silence.c_str(), &exp, WRDE_NOCMD | WRDE_SHOWERR | WRDE_UNDEF);
 	if (st < 0)
