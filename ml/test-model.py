@@ -7,7 +7,7 @@
 # Test the DOA estimation model by running it against file datasets.
 #
 # Example invocations:
-#    $ ./test-model.py -i data.hdf5 -m model.hdf5
+#    $ ./test-model.py -i dataset -m model.h5
 
 import numpy as np
 import argparse
@@ -30,15 +30,32 @@ DATASET_NSAMPLES = 512;
 
 BATCH_SIZE = 32;
 
+# Threshold for considering a resulting angle
+# as a "loose" (i.e. not exact) match. In degrees.
+LOOSE_MATCH_DEGS = 15;
+
 def run_sample(model, a, idstr, labels):
-    ds = tf.data.Dataset.from_tensor_slices(([a], [idstr])).batch(BATCH_SIZE)
+    ds = tf.data.Dataset.from_tensor_slices(([a], [idstr])).batch(1)
 
     predict = model.predict(ds, verbose=0)
     angle_id_predict = np.argmax(predict)
     print('Expected: ' + idstr + ', got: ' + labels[angle_id_predict])
 
+    s_expected = idstr
+    s_got = labels[angle_id_predict]
+    if s_expected == 'silence' and s_got != 'silence':
+        return False, False
+    if s_expected != 'silence' and s_got == 'silence':
+        return False, False
+    if s_expected == 'silence' and s_got == 'silence':
+        return True, True
+    f_expected = float(s_expected)
+    f_got = float(s_got)
+    return idstr == labels[angle_id_predict], abs(f_got - f_expected) < LOOSE_MATCH_DEGS 
+
 def path_to_audio(path):
     audio = np.fromfile(path, dtype=np.dtype('<i4'))
+    audio = np.divide(audio, 2**31)
     return audio
 
 # Load the mapping of NN output class IDs to their human-readable strings.
@@ -74,12 +91,22 @@ def main():
     model = keras.models.load_model(args.model)
     class_names = load_class_names(os.path.splitext(args.model)[0] + '.json')
 
+    n_total = 0
+    n_exact = 0
+    n_loose = 0
     for testi in range(0, args.niterations):
         rnd_i = random.randint(0, len(dataset_paths)-1)
         path = dataset_paths[rnd_i]
         a = path_to_audio(path)
 
-        run_sample(model, a, dataset_classes[rnd_i], class_names)
+        (exact, loose) = run_sample(model, a, dataset_classes[rnd_i], class_names)
+        if exact:
+            n_exact += 1
+        if loose:
+            n_loose += 1
+        n_total += 1
+
+    print("Total samples: {}, exact match {}%, loose match {}%".format(n_total, (n_exact * 100) // n_total, (n_loose * 100) // n_total))
 
     sys.exit(0)
 

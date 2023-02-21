@@ -104,7 +104,7 @@ an external JSON file.
 
 To run the model on a set of raw recorded audio chunks:
 
-	./ml/test-model.py -i ./datasets -m model.h5
+	./ml/test-model.py -i ./dataset -m model.h5
 
 It will print the expected and actual angle output from the DOA NN model:
 
