@@ -49,9 +49,10 @@ def run_sample(model, a, idstr, labels):
         return False, False
     if s_expected == 'silence' and s_got == 'silence':
         return True, True
-    f_expected = float(s_expected)
-    f_got = float(s_got)
-    return idstr == labels[angle_id_predict], abs(f_got - f_expected) < LOOSE_MATCH_DEGS 
+    angle_diff = abs(float(s_got) - float(s_expected))
+    if angle_diff > 180.0:
+        angle_diff = 360.0 - angle_diff
+    return idstr == labels[angle_id_predict], angle_diff < LOOSE_MATCH_DEGS
 
 def path_to_audio(path):
     audio = np.fromfile(path, dtype=np.dtype('<i4'))
