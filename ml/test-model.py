@@ -20,16 +20,6 @@ import os
 import tensorflow as tf
 from tensorflow import keras
 
-# The datasets audio parameters.
-NCHANNELS = 8;
-BITS_PER_SAMPLE = 32;
-SAMPLES_PER_SECOND = 24000;
-
-# Neural Network's input parameters.
-DATASET_NSAMPLES = 512;
-
-BATCH_SIZE = 32;
-
 # Threshold for considering a resulting angle
 # as a "loose" (i.e. not exact) match. In degrees.
 LOOSE_MATCH_DEGS = 15;
