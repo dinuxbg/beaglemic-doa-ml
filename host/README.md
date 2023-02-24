@@ -1,5 +1,7 @@
-# TensorFlow GPU setup
+# TensorFlow  setup
 
+
+## GPU-accelerated TensorFlow
 There are many tutorials out there explaining how to configure
 a host machine for running GPU-accelerated TensorFlow. Below
 I describe what I found to be the most hassle-free path.
@@ -25,3 +27,13 @@ visible to the container runtime.
 Once inside the container runtime, ensure that it can utilize the GPU:
 
 	./ml/check-tf-gpu.py
+
+## CPU-only TensorFlow
+
+Installing TensorFlow without GPU acceleration is relatively easy.
+Simply follow the [official](https://www.tensorflow.org/install/) documentation.
+
+
+	python3 -m venv tfenv
+	. tfenv/bin/activate
+	pip install tensorflow
