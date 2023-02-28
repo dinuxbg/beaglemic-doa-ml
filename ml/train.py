@@ -50,13 +50,6 @@ def build_model(input_shape, num_classes):
     # TODO - revise!
     x = keras.layers.Flatten()(inputs)
     x = keras.layers.Dense(4096, activation="relu")(x)
-    x = keras.layers.Dense(4096, activation="relu")(x)
-    x = keras.layers.Dense(1024, activation="relu")(x)
-    x = keras.layers.Dense(1024, activation="relu")(x)
-    x = keras.layers.Dense(512, activation="relu")(x)
-    x = keras.layers.Dense(512, activation="relu")(x)
-    x = keras.layers.Dense(256, activation="relu")(x)
-    x = keras.layers.Dense(256, activation="relu")(x)
 
     outputs = keras.layers.Dense(num_classes, activation="softmax", name="output")(x)
 
