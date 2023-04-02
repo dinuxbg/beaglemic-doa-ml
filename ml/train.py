@@ -16,6 +16,7 @@ import glob
 import json
 import sys
 import os
+import datetime
 
 import tensorflow as tf
 from tensorflow import keras
@@ -77,11 +78,14 @@ def do_training(trst):
         trst.model_filename, monitor="val_accuracy", save_best_only=True
     )
 
+    log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
+
     history = model.fit(
         trst.train_ds,
         epochs=EPOCHS,
         validation_data=trst.validation_ds,
-        callbacks=[earlystopping_cb, mdlcheckpoint_cb],
+        callbacks=[earlystopping_cb, mdlcheckpoint_cb, tensorboard_callback],
     )
     print(model.evaluate(trst.validation_ds))
     model.save(trst.model_filename)
