@@ -50,9 +50,9 @@ def build_model(input_shape, num_classes):
 
     # TODO - revise!
     x = keras.layers.Flatten()(inputs)
-    x = keras.layers.Dense(DATASET_NSAMPLES * NCHANNELS, activation="relu")(x)
+    x = keras.layers.Dense(DATASET_NSAMPLES * NCHANNELS, activation="relu", use_bias=False)(x)
 
-    outputs = keras.layers.Dense(num_classes, activation="softmax", name="output")(x)
+    outputs = keras.layers.Dense(num_classes, activation="softmax", name="output", use_bias=False)(x)
 
     return keras.models.Model(inputs=inputs, outputs=outputs)
 
