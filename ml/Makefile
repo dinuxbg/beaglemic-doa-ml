@@ -4,7 +4,7 @@
 # Build the C++ data parser and augmentation tool.
 
 CXXFLAGS += -O3 -Wall -Wextra
-CXXFLAGS += -std=c++20 -mtune=native
+CXXFLAGS += -std=c++20 -mtune=native -march=native
 # CXXFLAGS += -fsanitize=address -fsanitize=undefined -fsanitize-address-use-after-scope
 # CXXFLAGS += -g3
 prepare-data: prepare-data.cc | Makefile
