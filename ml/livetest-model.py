@@ -30,6 +30,7 @@ class angle_printer:
     def __init__(self, _maxn):
         self.maxn = _maxn
         self.marker_space = self.maxn // 8
+        self.waterfall_mode = False
 
     def print_header(self):
         fmts = '%-' + str(self.marker_space) + '.3f'
@@ -52,10 +53,16 @@ class angle_printer:
                 s += '#'
             else:
                 s += ' '
-        print('\r' + s, end='', flush=True, file=sys.stdout)
+        self.printline(s)
 
     def update_silence(self):
-        print('\r' + '.' * self.maxn, end='', flush=True, file=sys.stdout)
+        self.printline('.' * self.maxn)
+
+    def printline(self, s):
+        if self.waterfall_mode:
+            print(s, flush=True, file=sys.stdout)
+        else:
+            print('\r' + s, end='', flush=True, file=sys.stdout)
 
     def demo(self):
         self.print_header()
@@ -91,6 +98,16 @@ class data_reader:
             nbytes -= len(buf)
             data += buf
         audio = np.frombuffer(data, dtype=np.dtype('<i4'))
+        audio = audio.copy()
+        # Smooth a bit.
+        #for i in range(0, len(audio) - 1, 3):
+        #    audio[i] = (audio[i] + audio[i+1] + audio[i+3]) / 3
+        #    audio[i+1] = audio[i]
+        #    audio[i+2] = audio[i]
+        # ML model requires 0 channel in raw, and rest as "diffs" against it.
+        for si in range(0, DATASET_NSAMPLES):
+            for ch in range(1, NCHANNELS):
+                audio[si * NCHANNELS + ch] -= audio[si * NCHANNELS]
         audio = np.divide(audio, 2**31)
         return audio
 
@@ -131,6 +148,7 @@ def main():
 
     aprinter = angle_printer(len(class_names) - 1)
     aprinter.print_header()
+    aprinter.waterfall_mode = False
 
     for testi in range(0, args.niterations):
         achunk = data.read()
