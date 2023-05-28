@@ -14,6 +14,7 @@
 // TODO - remove the "Cisms" and switch to modern C++ paradigms and style.
 
 #include <cstdlib>
+#include <cstring>
 #include <cstdint>
 #include <cmath>
 
@@ -125,18 +126,35 @@ public:
 	// Save all the variants of the given raw audio chunk to file(s) on disk.
 	// This is virtual in order to allow custom variant preprocessing
 	// before the actual data save.
-	virtual bool save_chunk(const int32_t arr[OUT_NSAMPLES * NCHANNELS], off_t chunk_i, bool is_silence) = 0;
+	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence) = 0;
 
 protected:
 	const fs::path outbase;
 
 	// Useful utility function to save raw data to a file.
 	void save_to_file(const fs::path &path,
-			const int32_t *arr, off_t chunk_i)
+			int32_t data[OUT_NSAMPLES * NCHANNELS], off_t chunk_i)
 	{
 		int rnd = std::rand() % 100;
 		if (rnd < OUT_DROP_PERCENT)
 			return;
+
+		// Simulate different sound levels.
+		const long min_reduce_percent = 30;
+		const long max_amplify_percent = 200;
+		const long mult = min_reduce_percent + std::rand() % (max_amplify_percent - min_reduce_percent);
+		for (size_t si = 0; si < OUT_DATASET_NWORDS; si++)
+			data[si] = (data[si] * mult) / 100;
+
+		// "Normalize" data by recording only the difference
+		// from channel 0.
+		//
+		// Leave the raw PCM data for channel 0 itself. This data
+		// is needed by the NN to detect silence.
+		for (size_t si = 0; si < OUT_DATASET_NWORDS; si += NCHANNELS)
+			for (size_t chi = 1; chi < NCHANNELS; chi++)
+				data[si + chi] -= data[si];
+
 		// Let's use filename() instead of stem() for a more definitive record of the origin.
 		const auto fname = this->srcpath.filename().string() + "_" + std::to_string(chunk_i);
 		fs::create_directories(outbase / path);
@@ -145,7 +163,7 @@ protected:
 		if (!s.is_open()) {
 			fatal("Failed to open " + dst.string());
 		}
-		s.write(reinterpret_cast<const char *>(arr), sizeof(arr[0]) * OUT_DATASET_NWORDS);
+		s.write(reinterpret_cast<const char *>(data), sizeof(data[0]) * OUT_DATASET_NWORDS);
 	}
 };
 
@@ -164,7 +182,9 @@ public:
 		if (is_silence) {
 			/* Doesn't matter.  We want to record the silence. */;
 		}
-		this->save_to_file("silence", arr, chunk_i);
+		int32_t data[OUT_NSAMPLES * NCHANNELS];
+		std::memcpy(data, arr, sizeof(data));
+		this->save_to_file("silence", data, chunk_i);
 		return true;
 	}
 };
@@ -238,14 +258,6 @@ public:
 			for (size_t si = 0; si < OUT_DATASET_NWORDS; si += NCHANNELS)
 				for (size_t chi = 0; chi < NCHANNELS; chi++)
 					data[si + (chi + mic_offs) % NCHANNELS] = arr[si + chi];
-			// "Normalize" data by recording only the difference
-			// from channel 0.
-			//
-			// Leave the raw PCM data for channel 0 itself. This data
-			// is needed by the NN to detect silence.
-			for (size_t si = 0; si < OUT_DATASET_NWORDS; si += NCHANNELS)
-				for (size_t chi = 1; chi < NCHANNELS; chi++)
-					data[si + chi] -= data[si];
 			this->save_to_file(this->angle_dirs[mic_offs], data, chunk_i);
 		}
 		return true;
