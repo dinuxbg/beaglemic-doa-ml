@@ -52,10 +52,10 @@ class angle_printer:
                 s += '#'
             else:
                 s += ' '
-        print('\r' + s, end='', flush=True)
+        print('\r' + s, end='', flush=True, file=sys.stdout)
 
     def update_silence(self):
-        print('\r' + '.' * self.maxn, end='', flush=True)
+        print('\r' + '.' * self.maxn, end='', flush=True, file=sys.stdout)
 
     def demo(self):
         self.print_header()
