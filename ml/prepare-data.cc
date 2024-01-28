@@ -24,6 +24,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <chrono>
+#include <random>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -41,6 +42,8 @@ const float INITIAL_SKIP_S = 0.5;	// Recording sometimes starts with a glitch.
 const float SILENCE_TRAINING_S = 1.0;	// A period which we know is silent.
 const float VALID_SAMPLE_THRESHOLD = 1.1; // Threshold over maximum silence to consider a sample valid.
 const float VALID_SAMPLES_PERCENT = 10;	// Minimum percentage of valid samples to consider a chunk valid.
+
+const int ADDED_NOISE_FLOOR = 30;	// How much noise to add.  In percents of the silence threshold.
 
 // Neural Network's input parameters.
 const int OUT_NSAMPLES = 512;		//Output audio chunk size to save.
@@ -126,7 +129,7 @@ public:
 	// Save all the variants of the given raw audio chunk to file(s) on disk.
 	// This is virtual in order to allow custom variant preprocessing
 	// before the actual data save.
-	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence) = 0;
+	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence, int32_t silence_threshold) = 0;
 
 protected:
 	const fs::path outbase;
@@ -177,7 +180,7 @@ public:
 	virtual ~silence_output()
 	{
 	}
-	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence)
+	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence, int32_t)
 	{
 		if (is_silence) {
 			/* Doesn't matter.  We want to record the silence. */;
@@ -194,7 +197,7 @@ class dataset_output : public base_output {
 public:
 	dataset_output(const fs::path &_srcpath, const fs::path &_outbase)
 		: base_output(_srcpath, _outbase),
-		  subangle(-1.0), elev(-1.0), distance(-1.0)
+		  subangle(-1.0), elev(-1.0), distance(-1.0), prng()
 	{
  		/*
 		 * Extract the physical environment settings for a
@@ -226,16 +229,23 @@ public:
 			this->angle_dirs[mic_offs] = path;
 			//std::cout << "Directories: " << path << std::endl;
 		}
+		// Seed the PRNG with "real" randomness..
+		std::random_device rd;
+		prng.seed(rd());
 	}
 	virtual ~dataset_output()
 	{
 	}
 
-	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence)
+	virtual bool save_chunk(const int32_t *arr, off_t chunk_i, bool is_silence, int32_t silence_threshold)
 	{
-		// Don't record silence.
-		if (is_silence)
+		// "Special" silence (i.e. pauses between words).
+		if (is_silence) {
+			int32_t data[OUT_DATASET_NWORDS];
+			std::memcpy(data, arr, sizeof(data));
+			this->save_to_file("silence", data, chunk_i);
 			return false;
+		}
 
 		for (int mic_offs = 0; mic_offs < NCHANNELS; mic_offs++) {
 			int32_t data[OUT_DATASET_NWORDS];
@@ -258,6 +268,14 @@ public:
 			for (size_t si = 0; si < OUT_DATASET_NWORDS; si += NCHANNELS)
 				for (size_t chi = 0; chi < NCHANNELS; chi++)
 					data[si + (chi + mic_offs) % NCHANNELS] = arr[si + chi];
+			// Add noise
+			const int32_t noise_max = (ADDED_NOISE_FLOOR * silence_threshold) / 100;
+			std::uniform_int_distribution<int32_t> noise_dist(-noise_max, noise_max);
+
+			for (size_t si = 0; si < OUT_DATASET_NWORDS; si += NCHANNELS)
+				for (size_t chi = 0; chi < NCHANNELS; chi++) {
+					data[si + chi] += noise_dist(prng);
+				}
 			this->save_to_file(this->angle_dirs[mic_offs], data, chunk_i);
 		}
 		return true;
@@ -266,6 +284,7 @@ private:
 	float subangle;
 	float elev;
 	float distance;
+	std::mt19937 prng;
 	fs::path angle_dirs[NCHANNELS];
 };
 //----------------------------------------------------------------------------
@@ -350,7 +369,7 @@ static void process_raw_audio_file(base_output &out)
 
 		const bool is_silence = (nvals >= nvals_threshold);
 
-		if (out.save_chunk(chunk, chunk_i, is_silence))
+		if (out.save_chunk(chunk, chunk_i, is_silence, silence_threshold))
 			num_chunks++;
 	}
 	if (VERBOSE) {
